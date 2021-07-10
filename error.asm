@@ -1,31 +1,34 @@
 
 syntax_error:		ld			de, MsgSyntaxError
 					ld			bc, MsgSyntaxErrorEnd - MsgSyntaxError
-					call		0x203C
-					jp			$
+					jr			error
 
 identifier_too_long:ld			de, MsgIdentifierTooLong
 					ld			bc, MsgIdentifierTooLongEnd - MsgIdentifierTooLong
-					call		0x203C
-					jp			$
+					jr			error
 
 unknown_keyword:	ld			de, MsgUnknownKeyword
 					ld			bc, MsgUnknownKeywordEnd - MsgUnknownKeyword
-					call		0x203C
-					jp			$
+					jr			error
 
 stack_overflow:		ld			de, MsgStackOverflow
 					ld			bc, MsgStackOverflowEnd - MsgStackOverflow
-					call		0x203C
-					jp			$
+					jr			error
 
 stack_underflow:	ld			de, MsgStackUnderflow
 					ld			bc, MsgStackUnderflowEnd - MsgStackUnderflow
-					call		0x203C
-					jp			$
+					jr			error
 
 invalid_type:		ld			de, MsgInvalidType
 					ld			bc, MsgInvalidTypeEnd - MsgInvalidType
+					; <<pass-through to error>>
+
+error:				call		0x203C
+					ld			de, MsgAtLine
+					ld			bc, MsgAtLineEnd - MsgAtLine
+					call		0x203C
+					ld			hl, (CurrentLine)
+					call		WordToStr
 					call		0x203C
 					jp			$
 
@@ -46,3 +49,6 @@ MsgStackUnderflowEnd:
 
 MsgInvalidType 		db			"invalid operand type"
 MsgInvalidTypeEnd:
+
+MsgAtLine 			db			" at line "
+MsgAtLineEnd:

@@ -18,27 +18,33 @@ execute_line:		call		read_number
 					ld			(CurrentLine), ix
 					call		read_whitespace
 					call		read_keyword
-					call		call_ix
-                    ret
-
 call_ix:			jp			(ix)
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 					db			"PRINT"
 PRINT:				call		read_whitespace
-					call		read_expression
-					call		check_eol
+.loop:				call		read_expression
 					push		hl
 					call		pop_value
 					ld			a, (hl)
 					cp			TYPE_NUMBER
-					jr			z, .print_number
+					call		z, .print_number
 					cp			TYPE_STRING
-					jr			z, .print_string
+					call		z, .print_string
+					cp			TYPE_CHAR
+					call		z, .print_char
+					pop			hl
+					call		skip_whitespace
+					ld			a, (hl)
+					cp			','
+					jr			nz, .end
+					call		read_comma
+					jr			.loop
+.end:				call		check_eol
+					push		hl
+					ld			a, 13			; print new line
+					rst			16
 					pop			hl
 					ret
 
@@ -48,11 +54,7 @@ PRINT:				call		read_whitespace
 					ld			h, (hl)
 					ld			l, a
 					call		WordToStr
-					call		0x203C			; ROM PRINT
-					ld			a, 13			; print new line
-					rst			16
-					pop			hl
-					ret
+					jp			0x203C			; ROM PRINT
 
 .print_string:		inc			hl
 					ld			e, (hl)
@@ -62,18 +64,33 @@ PRINT:				call		read_whitespace
 					ld			c, (hl)
 					inc			hl
 					ld			b, (hl)
-					call		0x203C			; ROM PRINT
-					ld			a, 13			; print new line
+					jp			0x203C			; ROM PRINT
+
+.print_char:		inc			hl
+					ld			a, (hl)
 					rst			16
-					pop			hl
 					ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 					db			"LET"
 LET:				call		read_whitespace
-					
-					ret
+					call		read_variable
+					push		ix
+					call		skip_whitespace
+					ld			a, (hl)
+					cp			'='
+					jp			nz, syntax_error
+					inc			hl
+					call		skip_whitespace
+					call		read_expression_number
+					pop			de
+					ld			a, ixl
+					ld			(de), a
+					inc			de
+					ld			a, ixh
+					ld			(de), a
+					jp			check_eol
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -88,10 +105,10 @@ CLS:				call		check_eol
 
 					db			"POKE"
 POKE:				call		read_whitespace
-					call		read_number
+					call		read_expression_number
 					push		ix
 					call		read_comma
-					call		read_number
+					call		read_expression_number
 					ld			e, ixl
 					call		check_eol
 					pop			ix
@@ -102,10 +119,10 @@ POKE:				call		read_whitespace
 
 					db			"OUT"
 OUT:				call		read_whitespace
-					call		read_number
+					call		read_expression_number
 					push		ix
 					call		read_comma
-					call		read_number
+					call		read_expression_number
 					ld			e, ixl
 					call		check_eol
 					pop			bc
@@ -116,7 +133,7 @@ OUT:				call		read_whitespace
 
 					db			"GOTO"
 GOTO:				call		read_whitespace
-					call		read_number
+					call		read_expression_number
 					call		check_eol
 					call		find_line
 					ret
@@ -161,9 +178,11 @@ WordToStr:     		ld          de, .buffer
 .buffer				db			'?????'
 
 					include		"expr.asm"
+					include		"func.asm"
 					include		"parse.asm"
 					include		"error.asm"
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 CurrentLine			dw			0
 
@@ -173,15 +192,34 @@ NumberStack:		defs		5 * STACK_SIZE	; 1 byte = tag (value type)
 												; 4 byte = value
 												;    number: 2b value
 												;    string: 2b addr, 2b len
+												;    char: 1b value
+
+Variables:			defs		26 * 2
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 source:				db			'10 CLS',10
-					db			'20 PRINT "HELLO, WORLD"',10
-					db			'30 POKE 16384,255',10
-					db			'40 POKE 22528,199',10
-					db			'50 OUT 254,4',10
-					db			'60 GOTO 60',10
+					db			'20 LET X=1',10
+					db			'30 LET Y=1',10
+					db			'40 LET A=1',10
+					db			'50 LET B=1',10
+					;db			'60 PRINT CHR$(22),CHR$(X),CHR$(Y)," "',10
+					db			'70 LET X=X+A',10
+					db			'80 LET Y=Y+B',10
+					db			'90 PRINT CHR$(22),CHR$(X),CHR$(Y),"X"',10
+					db			'100 GOTO 70',10
+
+
+					db			'10 CLS',10
+					db			'20 PRINT CHR$(22),CHR$(0),CHR$(0),IN 65278',10
+					db			'30 PRINT IN 65022',10
+					db			'40 PRINT IN 64510',10
+					db			'50 PRINT IN 63486',10
+					db			'60 PRINT IN 61438',10
+					db			'70 PRINT IN 57342',10
+					db			'80 PRINT IN 49150',10
+					db			'90 PRINT IN 32766',10
+					db			'100 GOTO 20',10
 
 					savesna 	"basic.sna", start
 					SLDOPT 		COMMENT WPMEM, LOGPOINT, ASSERTION

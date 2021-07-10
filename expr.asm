@@ -1,6 +1,20 @@
 
 TYPE_NUMBER = 0
 TYPE_STRING = 1
+TYPE_CHAR = 2
+
+					; Input:
+					;   HL => line
+					; Output:
+					;   HL => first char after whitespace
+					;   IX = number
+
+read_expression_number:
+					call		read_expression
+					push		hl
+					call		pop_number
+					pop			hl
+					ret
 
 					; Input:
 					;   HL => line
@@ -97,7 +111,8 @@ primary_expression:	ld			a, (hl)
 					jr			z, .string
 					call		is_number
 					jr			z, .readnum
-					jp			syntax_error
+					call		read_function
+					jp			call_ix
 .readnum:			call		read_number
 					call		push_number
 					ret
