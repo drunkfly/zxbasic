@@ -14,7 +14,7 @@ start:				ld			sp, stack_top
 					; Output:
 					;   HL => next line
 
-execute_line:		call		read_number
+execute_line:		call		read_number ; FIXME: wrong error if bad line number
 					ld			(CurrentLine), ix
 execute_subline:	call		read_whitespace
 .nextcmd:			call		read_keyword
@@ -182,6 +182,138 @@ THEN:				jp			syntax_error
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+					db			"FOR"
+FOR:				call		read_whitespace
+					; variable '=' number 'TO' number
+					; variable
+					call		read_variable
+					push		ix
+					; '='
+					call		skip_whitespace
+					ld			a, (hl)
+					cp			'='
+					jp			nz, syntax_error
+					inc			hl
+					call		skip_whitespace
+					; number
+					call		read_number
+					push		ix
+					; 'TO'
+					call		read_whitespace
+					call		read_keyword
+					ld			a, ixl
+					cp			low TO
+					jp			nz, syntax_error
+					ld			a, ixh
+					cp			high TO
+					jp			nz, syntax_error
+					; number
+					call		read_whitespace
+					call		read_number
+					push		ix
+					; eol
+					call		check_eol
+					; =====
+					pop			bc		; target number
+					pop			de		; start number
+					pop			ix
+					ld			a, (IsNext)
+					or			a
+					jr			nz, .next
+.start:				ld			(ix+0), e
+					ld			(ix+1), d
+					; put loop on stack
+					ld			a, (LoopStackTop)
+					cp			LOOP_STACK_SIZE
+					jp			nc, stack_overflow
+					call		calc_loop_stack_addr
+					inc			a
+					ld			(LoopStackTop), a
+					; save line number
+					ld			de, (CurrentLine)
+					ld			(ix+LOOP_STACK_ENTRY.forLine), e
+					ld			(ix+LOOP_STACK_ENTRY.forLine+1), d
+					ld			(ix+LOOP_STACK_ENTRY.last), 0
+					ret
+.next:				xor			a
+					ld			(IsNext), a
+					ld			a, (ix+0)
+					cp			c
+					jr			nz, .noteq
+					ld			a, (ix+1)
+					cp			b
+					jr			z, .end
+.noteq:				ld			a, (ix+0)
+					add			a, 1
+					ld			(ix+0), a
+					ld			a, (ix+1)
+					adc			a, 0
+					ld			(ix+1), a
+					ret
+.end:				ld			a, (LoopStackTop)
+					cp			LOOP_STACK_SIZE
+					jp			nc, stack_overflow
+					dec			a
+					call		calc_loop_stack_addr
+					ld			(ix+LOOP_STACK_ENTRY.last), 1
+					ld			e, (ix+LOOP_STACK_ENTRY.nextLine)
+					ld			d, (ix+LOOP_STACK_ENTRY.nextLine+1)
+					ld			ixl, e
+					ld			ixh, d
+					jp			find_line
+
+					db			"TO"
+TO:					jp			syntax_error
+
+					db			"NEXT"
+NEXT:				call		read_whitespace
+					call		read_variable
+					call		check_eol
+					; FIXME: ensure variable is the same
+					ld			a, (LoopStackTop)
+					or			a
+					jp			z, stack_underflow
+					dec			a
+					call		calc_loop_stack_addr
+					ld			a, (ix+LOOP_STACK_ENTRY.last)
+					or			a
+					jr			z, .notLast
+					push		hl
+					ld			hl, LoopStackTop
+					dec			(hl)
+					pop			hl
+					ret
+.notLast:			ld			de, (CurrentLine)
+					ld			(ix+LOOP_STACK_ENTRY.nextLine), e
+					ld			(ix+LOOP_STACK_ENTRY.nextLine+1), d
+					ld			e, (ix+LOOP_STACK_ENTRY.forLine)
+					ld			d, (ix+LOOP_STACK_ENTRY.forLine+1)
+					ld			ixl, e
+					ld			ixh, d
+					call		find_line
+					ld			a, 1
+					ld			(IsNext), a
+					ret
+
+					; Input:
+					;   A = stack index
+					; Output:
+					;   HL => stack slot
+
+calc_loop_stack_addr:
+					ld			ixl, a
+					ld			ixh, 0
+					ld			e, a
+					ld			d, ixh
+					add			ix, ix		; *2
+					add			ix, ix		; *4
+					add			ix, de		; *5
+					ld			de, LoopStack
+					add			ix, de
+					ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 					db			"PAUSE"
 PAUSE:				call		read_whitespace
 					call		read_expression_number
@@ -245,19 +377,39 @@ WordToStr:     		ld          de, .buffer
 
 CurrentLine			dw			0
 
-STACK_SIZE = 20
+					struct 		LOOP_STACK_ENTRY
+forLine				word
+nextLine			word
+last				byte
+					ends
+
+IsNext				db			0
+
+LOOP_STACK_SIZE equ 20
+LoopStackTop:		db			0
+LoopStack:			defs		LOOP_STACK_ENTRY * LOOP_STACK_SIZE
+
+NUM_STACK_SIZE equ 20
 NumberStackTop:		db			0
-NumberStack:		defs		5 * STACK_SIZE	; 1 byte = tag (value type)
-												; 4 byte = value
-												;    number: 2b value
-												;    string: 2b addr, 2b len
-												;    char: 1b value
+NumberStack:		defs		5 * NUM_STACK_SIZE	; 1 byte = tag (value type)
+													; 4 byte = value
+													;    number: 2b value
+													;    string: 2b addr, 2b len
+													;    char: 1b value
 
 Variables:			defs		26 * 2
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 source:				db			'10 CLS',10
+					db			'20 FOR Y=1 TO 9',10
+					db			'30 FOR X=1 TO 9',10
+					db			'40 PRINT CHR$(22),CHR$(Y),CHR$(X),Y',10
+					db			'50 NEXT X',10
+					db			'60 NEXT Y',10
+					db			'70 GOTO 70',10
+
+					db			'10 CLS',10
 					db			'20 LET X=1 : LET Y=1',10
 					db			'30 LET A=1 : LET B=1',10
 					db			'40 LET D=X : LET E=Y',10

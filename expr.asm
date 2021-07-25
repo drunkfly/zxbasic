@@ -216,9 +216,9 @@ push_number:		push		hl
 					;   HL => stack slot
 
 push_value:			ld			a, (NumberStackTop)
-					cp			STACK_SIZE
+					cp			NUM_STACK_SIZE
 					jp			nc, stack_overflow
-					call		calc_stack_addr
+					call		calc_num_stack_addr
 					inc			a
 					ld			(NumberStackTop), a
 					ret
@@ -246,14 +246,14 @@ pop_value:			ld			a, (NumberStackTop)
 					jp			z, stack_underflow
 					dec			a
 					ld			(NumberStackTop), a
-					; <<pass-through to calc_stack_addr>>
+					; <<pass-through to calc_num_stack_addr>>
 
 					; Input:
 					;   A = stack index
 					; Output:
 					;   HL => stack slot
 
-calc_stack_addr:	ld			l, a
+calc_num_stack_addr:ld			l, a
 					ld			h, 0
 					ld			e, a
 					ld			d, h

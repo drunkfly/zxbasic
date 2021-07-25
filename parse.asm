@@ -97,9 +97,15 @@ read_keyword:		call		read_identifier
 .length2:			ld			ix, IF-2
 					call		compare
 					ret			z
+					ld			ix, TO-2
+					call		compare
+					ret			z
 					jp			unknown_keyword
 
 .length3:			ld			ix, LET-3
+					call		compare
+					ret			z
+					ld			ix, FOR-3
 					call		compare
 					ret			z
 					ld			ix, CLS-3
@@ -113,10 +119,13 @@ read_keyword:		call		read_identifier
 .length4:			ld			ix, GOTO-4
 					call		compare
 					ret			z
-					ld			ix, POKE-4
+					ld			ix, NEXT-4
 					call		compare
 					ret			z
 					ld			ix, THEN-4
+					call		compare
+					ret			z
+					ld			ix, POKE-4
 					call		compare
 					ret			z
 					jp			unknown_keyword
