@@ -78,15 +78,23 @@ read_number:		ld			ix, 0
 					;   IX => keyword procedure
 
 read_keyword:		call		read_identifier
-					ld			a, 3
+					ld			a, 2
+					cp			c
+					jr			z, .length2
+					inc			a
 					cp			c
 					jr			z, .length3
-					ld			a, 4
+					inc			a
 					cp			c
 					jr			z, .length4
-					ld			a, 5
+					inc			a
 					cp			c
 					jr			z, .length5
+					jp			unknown_keyword
+
+.length2:			ld			ix, IF-2
+					call		compare
+					ret			z
 					jp			unknown_keyword
 
 .length3:			ld			ix, LET-3
@@ -106,9 +114,15 @@ read_keyword:		call		read_identifier
 					ld			ix, POKE-4
 					call		compare
 					ret			z
+					ld			ix, THEN-4
+					call		compare
+					ret			z
 					jp			unknown_keyword
 
 .length5:			ld			ix, PRINT-5
+					call		compare
+					ret			z
+					ld			ix, PAUSE-5
 					call		compare
 					ret			z
 					jp			unknown_keyword
@@ -222,6 +236,7 @@ skip_whitespace:	ld			a, (hl)
 					;   ZF = 1 if equal, ZF = 0 if not
 
 compare:			push		bc
+					push		de
 .loop:				ld			a, (de)
 					cp			(ix)
 					jr			nz, .end
@@ -229,7 +244,8 @@ compare:			push		bc
 					inc			de
 					dec			c
 					jr			nz, .loop
-.end:				pop			bc
+.end:				pop			de
+					pop			bc
 					ret
 
 					; Input:

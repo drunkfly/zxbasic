@@ -16,7 +16,7 @@ start:				ld			sp, stack_top
 
 execute_line:		call		read_number
 					ld			(CurrentLine), ix
-					call		read_whitespace
+execute_subline:	call		read_whitespace
 					call		read_keyword
 call_ix:			jp			(ix)
 
@@ -140,6 +140,55 @@ GOTO:				call		read_whitespace
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+					db			"IF"
+IF:					call		read_whitespace
+					call		read_expression_number
+					push		ix
+					; expect 'THEN'
+					call		read_keyword
+					ld			a, ixl      
+					cp			low THEN
+					jp			nz, syntax_error
+					ld			a, ixh
+					cp			high THEN
+					jp			nz, syntax_error
+					;
+					pop			ix
+					ld			a, ixl
+					or			a
+					jp			nz, execute_subline
+					cp			ixh
+					jp			nz, execute_subline
+.false:				; skip until EOL
+					ld			a, (hl)
+					inc			hl
+					cp			10
+					jr			nz, .false
+					ret
+
+
+					db			"THEN"
+THEN:				jp			syntax_error
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+					db			"PAUSE"
+PAUSE:				call		read_whitespace
+					call		read_expression_number
+					push		ix
+					call		check_eol
+					pop			de
+.loop:				ld			a, e
+					or			a
+					jr			nz, .cont
+					cp			d
+					ret			z
+.cont:				halt
+					dec			de
+					jr			.loop
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 					; Input:
 					;   HL = number
 					; Output:
@@ -203,11 +252,18 @@ source:				db			'10 CLS',10
 					db			'30 LET Y=1',10
 					db			'40 LET A=1',10
 					db			'50 LET B=1',10
-					;db			'60 PRINT CHR$(22),CHR$(X),CHR$(Y)," "',10
-					db			'70 LET X=X+A',10
-					db			'80 LET Y=Y+B',10
-					db			'90 PRINT CHR$(22),CHR$(X),CHR$(Y),"X"',10
-					db			'100 GOTO 70',10
+					db			'60 LET D=X',10
+					db			'70 LET E=Y',10
+					db			'80 LET X=X+A',10
+					db			'90 IF X=30 THEN LET A=-1',10
+					db			'100 IF X=1 THEN LET A=1',10
+					db			'110 LET Y=Y+B',10
+					db			'120 IF Y=20 THEN LET B=-1',10
+					db			'130 IF Y=1 THEN LET B=1',10
+					db			'140 PAUSE 1',10
+					db			'150 PRINT CHR$(22),CHR$(E),CHR$(D)," "',10
+					db			'160 PRINT CHR$(22),CHR$(Y),CHR$(X),"X"',10
+					db			'170 GOTO 60',10
 
 
 					db			'10 CLS',10

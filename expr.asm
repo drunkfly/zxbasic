@@ -21,8 +21,35 @@ read_expression_number:
 					; Output:
 					;   HL => first char after whitespace
 
-read_expression:	call		additive_expression
+read_expression:	call		compare_expression
 					ret
+
+compare_expression:	call		additive_expression
+.loop:				call		skip_whitespace
+					ld			a, (hl)
+					cp			'='
+					jr			z, .eq
+					ret
+.eq:				inc			hl
+					call		skip_whitespace
+					call		additive_expression
+					push		hl
+					call		pop_number
+					ld			c, ixl
+					ld			b, ixh
+					call		pop_number
+					ld			a, c
+					cp			ixl
+					jr			nz, .eq_false
+					ld			a, b
+					cp			ixh
+					jr			nz, .eq_false
+					ld			ix, 1
+					jr			.eq_done
+.eq_false:			ld			ix, 0
+.eq_done:			call		push_number
+					pop			hl
+					jr			.loop
 
 additive_expression:call		multiply_expression
 .loop:				call		skip_whitespace
@@ -66,7 +93,7 @@ additive_expression:call		multiply_expression
 					pop			hl
 					jr			.loop
 
-multiply_expression:call		primary_expression
+multiply_expression:call		unary_expression
 .loop:				call		skip_whitespace
 					ld			a, (hl)
 					cp			'*'
@@ -74,7 +101,7 @@ multiply_expression:call		primary_expression
 					ret
 .mul:				inc			hl
 					call		skip_whitespace
-					call		primary_expression
+					call		unary_expression
 					push		hl
 					call		pop_number
 					ld			c, ixl
@@ -103,6 +130,25 @@ multiply_expression:call		primary_expression
 					call		push_number
 					pop			hl
 					jp			.loop
+
+unary_expression:	ld			a, (hl)
+					cp			'-'
+					jr			z, .negate
+					jr			primary_expression
+.negate:			inc			hl
+					call		primary_expression
+					push		hl
+					call		pop_number
+					ld			a, ixl
+					cpl
+					ld			ixl, a
+					ld			a, ixh
+					cpl
+					ld			ixh, a
+					inc			ix
+					call		push_number
+					pop			hl
+					ret
 
 primary_expression:	ld			a, (hl)
 					cp			'('

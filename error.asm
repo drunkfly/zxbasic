@@ -7,9 +7,22 @@ identifier_too_long:ld			de, MsgIdentifierTooLong
 					ld			bc, MsgIdentifierTooLongEnd - MsgIdentifierTooLong
 					jr			error
 
-unknown_keyword:	ld			de, MsgUnknownKeyword
+unknown_keyword:	push		de
+					push		bc
+					ld			de, MsgUnknownKeyword
 					ld			bc, MsgUnknownKeywordEnd - MsgUnknownKeyword
-					jr			error
+					call		0x203C
+					pop			bc
+					pop			de
+					ld			b, 0
+					call		0x203C
+					ld			de, MsgAtLine
+					ld			bc, MsgAtLineEnd - MsgAtLine
+					call		0x203C
+					ld			hl, (CurrentLine)
+					call		WordToStr
+					call		0x203C
+					jp			$
 
 stack_overflow:		ld			de, MsgStackOverflow
 					ld			bc, MsgStackOverflowEnd - MsgStackOverflow
@@ -38,7 +51,7 @@ MsgSyntaxErrorEnd:
 MsgIdentifierTooLong db			"identifier too long"
 MsgIdentifierTooLongEnd:
 
-MsgUnknownKeyword 	db			"unknown keyword"
+MsgUnknownKeyword 	db			"unknown keyword "
 MsgUnknownKeywordEnd:
 
 MsgStackOverflow 	db			"expression stack overflow"
