@@ -6,9 +6,11 @@
 
 check_eol:			call		skip_whitespace
 					ld			a, (hl)
+					cp			':'
+					jr			z, .eol
 					cp			10
 					jp			nz, syntax_error
-					inc			hl
+.eol:				inc			hl
 					ret
 
 					; Input:

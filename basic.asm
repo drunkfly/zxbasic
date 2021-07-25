@@ -17,7 +17,16 @@ start:				ld			sp, stack_top
 execute_line:		call		read_number
 					ld			(CurrentLine), ix
 execute_subline:	call		read_whitespace
-					call		read_keyword
+.nextcmd:			call		read_keyword
+					call		call_ix
+					dec			hl
+					ld			a, (hl)
+					inc			hl
+					cp			':'
+					ret			nz
+					call		skip_whitespace
+					jr			.nextcmd
+
 call_ix:			jp			(ix)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -162,10 +171,11 @@ IF:					call		read_whitespace
 .false:				; skip until EOL
 					ld			a, (hl)
 					inc			hl
+					cp			':'
+					ret			z
 					cp			10
 					jr			nz, .false
 					ret
-
 
 					db			"THEN"
 THEN:				jp			syntax_error
@@ -248,22 +258,19 @@ Variables:			defs		26 * 2
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 source:				db			'10 CLS',10
-					db			'20 LET X=1',10
-					db			'30 LET Y=1',10
-					db			'40 LET A=1',10
-					db			'50 LET B=1',10
-					db			'60 LET D=X',10
-					db			'70 LET E=Y',10
-					db			'80 LET X=X+A',10
-					db			'90 IF X=30 THEN LET A=-1',10
-					db			'100 IF X=1 THEN LET A=1',10
-					db			'110 LET Y=Y+B',10
-					db			'120 IF Y=20 THEN LET B=-1',10
-					db			'130 IF Y=1 THEN LET B=1',10
-					db			'140 PAUSE 1',10
-					db			'150 PRINT CHR$(22),CHR$(E),CHR$(D)," "',10
-					db			'160 PRINT CHR$(22),CHR$(Y),CHR$(X),"X"',10
-					db			'170 GOTO 60',10
+					db			'20 LET X=1 : LET Y=1',10
+					db			'30 LET A=1 : LET B=1',10
+					db			'40 LET D=X : LET E=Y',10
+					db			'50 LET X=X+A',10
+					db			'60 IF X=30 THEN LET A=-1',10
+					db			'70 IF X=1 THEN LET A=1',10
+					db			'80 LET Y=Y+B',10
+					db			'90 IF Y=20 THEN LET B=-1',10
+					db			'100 IF Y=1 THEN LET B=1',10
+					db			'110 PAUSE 1',10
+					db			'120 PRINT CHR$(22),CHR$(E),CHR$(D)," "',10
+					db			'130 PRINT CHR$(22),CHR$(Y),CHR$(X),"X"',10
+					db			'140 GOTO 40',10
 
 
 					db			'10 CLS',10
