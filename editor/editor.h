@@ -4,10 +4,15 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifndef _WIN32
+#include <arch/zx.h>
+#endif
+
 typedef unsigned char byte;
 typedef unsigned short word;
 
 #define SCREEN_WIDTH 64
+#define CODEVIEW_HEIGHT 23
 #define INPUT_Y 24
 
 enum {
@@ -31,6 +36,15 @@ typedef struct Line {
 
 extern Line* lines;
 extern word lineCount;
+
+extern char inputBuf[257];
+extern byte lineLength;
+
+extern word lastEnteredLineNumber;
+
+#ifndef _WIN32
+__sfr __banked __at 0x00fe port00FE;
+#endif
 
 void gotoxy(byte x, byte y);
 

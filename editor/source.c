@@ -11,24 +11,25 @@
 //  Lines
 //  FFFF
 
-#ifdef __WIN32__
+#ifdef _WIN32
 
 Line linebuf[65536];
 Line* lines = linebuf;
 
 char databuf[16384];
-char* lineData = databuf;
+char* lineData = databuf + sizeof(databuf);
 char* lineDataEnd = databuf + sizeof(databuf);
 
 #else
 
 Line* lines = (Line*)0xC000;
-char* lineData = (char*)0xFFFF;
-char* lineDataEnd = (char*)0xFFFF;
+char* lineData = (char*)0xF000;
+char* lineDataEnd = (char*)0xF000;
 
 #endif
 
 word lineCount = 0;
+word lastEnteredLineNumber = 0;
 
 static void insertLineData(Line* line, const char* data)
 {
@@ -103,12 +104,12 @@ Line* findLine(word number)
 
 void setLine(const char* text)
 {
-	word number = extractLineNumber(&text);
+	lastEnteredLineNumber = extractLineNumber(&text);
 
-	Line* line = findLine(number);
+	Line* line = findLine(lastEnteredLineNumber);
 	word lineIndex = line - lines;
 
-	if (line->number == number) {
+	if (line->number == lastEnteredLineNumber) {
 		removeLineData(line);
 		if (*text == 0) {
 			if (lineIndex < lineCount) {
@@ -128,7 +129,7 @@ void setLine(const char* text)
 				&lines[lineIndex], sizeof(Line) * (lineCount - lineIndex));
 		}
 
-		line->number = number;
+		line->number = lastEnteredLineNumber;
 		lineCount++;
 		lines[lineCount].number = 0xFFFF;
 		lines[lineCount].text = lineDataEnd;

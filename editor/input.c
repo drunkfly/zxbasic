@@ -8,7 +8,8 @@ byte lineLength;
 byte capsLock = 0;
 byte blink = 0;
 
-__sfr __banked __at 0x00fe port00FE;
+#ifndef _WIN32
+//__sfr __banked __at 0x00fe port00FE;
 __sfr __banked __at 0xfefe portFEFE;
 __sfr __banked __at 0xfdfe portFDFE;
 __sfr __banked __at 0xfbfe portFBFE;
@@ -17,6 +18,17 @@ __sfr __banked __at 0xeffe portEFFE;
 __sfr __banked __at 0xdffe portDFFE;
 __sfr __banked __at 0xbffe portBFFE;
 __sfr __banked __at 0x7ffe port7FFE;
+#else
+byte port00FE;
+byte portFEFE;
+byte portFDFE;
+byte portFBFE;
+byte portF7FE;
+byte portEFFE;
+byte portDFFE;
+byte portBFFE;
+byte port7FFE;
+#endif
 
 void moveCursorLeft()
 {
@@ -63,9 +75,13 @@ void input()
 {
 	byte i, pos, key;
 
-	lineOff = 0;
-	linePos = 0;
-	lineLength = 0;
+	if (lineLength < SCREEN_WIDTH) {
+		lineOff = 0;
+		linePos = lineLength;
+	} else {
+		lineOff = lineLength - SCREEN_WIDTH + 1;
+		linePos = SCREEN_WIDTH - 1;
+	}
 
 	for (;;) {
 		gotoxy(1, INPUT_Y);
@@ -80,6 +96,7 @@ void input()
 
 			key = readKey();
 			if (key != 0) {
+			  #ifndef _WIN32
 				while ((port00FE & 0x1f) != 0x1f) {
 			   		__asm
    					halt
@@ -87,12 +104,15 @@ void input()
 	   				blink++;
    					drawCursor();
 				}
+			  #endif	
 				break;
 			}
 
+		  #ifndef _WIN32
 		   	__asm
 	   		halt
    			__endasm;
+   		  #endif	
 	   		blink++;
 		   	drawCursor();
 		}
